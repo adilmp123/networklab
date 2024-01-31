@@ -1,0 +1,8 @@
+ifconfig
+netstat
+ping
+telnet
+ftp
+traceroute
+whois
+finger
