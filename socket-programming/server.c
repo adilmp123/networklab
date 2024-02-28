@@ -6,8 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#define CONNECTION_PORT 3500
-
+#define PORT 3000       
 int main()
 {
     int socketDescriptor;
@@ -19,7 +18,7 @@ int main()
     struct sockaddr_in serverAddress;
     char * message = "Hi client, this is server";
     socketDescriptor = socket(AF_INET,SOCK_STREAM,0);
-    
+
     if(socketDescriptor<0)
     {
         perror("socket creation failed");
@@ -31,6 +30,16 @@ int main()
     if(status<0)
     {
         perror("Couldn't set options");
+        exit(EXIT_FAILURE);
+    }
+
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(PORT);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    serverAddress.sin_zero[8]='\0';
+    status=bind(socketDescriptor, (struct sockaddr*)&serverAddress, sizeof(struct sockaddr));
+    if(status<0){
+        perror("Couldn't bind socket");
         exit(EXIT_FAILURE);
     }
 
