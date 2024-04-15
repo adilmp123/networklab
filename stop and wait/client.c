@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #define and &&
 #define PORT 3000
+// export DOCKER_HOST=unix:///var/run/docker.sock
 
 typedef struct 
 {
