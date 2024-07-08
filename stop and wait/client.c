@@ -1,74 +1,60 @@
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <string.h>
+#include <sys/time.h>
 #include <arpa/inet.h>
-#include <stdbool.h>
-#define and &&
-#define PORT 3000
-// export DOCKER_HOST=unix:///var/run/docker.sock
+#define max 1024
+#define port 3000
+#define print printf("\n");printf
 
-typedef struct 
-{
-    char data[1024];
-}Packet;
-
-typedef struct 
-{
-    int frameID;
-    int seqNo;
-    int ack;
-    Packet packet;
-}Frame;
-
-int main()
-{
+int main() {
     int sockfd;
-    struct sockaddr_in serverAddr;
+    int recvstatus, ackno;
+    int frame_no, i;
+    char buffer[max];
+    struct timeval timeout;
+    struct sockaddr_in server_address;
 
-    char buffer[1024];
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
 
-    int frameID=0;
-    Frame frameRecv; 
-    Frame frameSend; 
-    int ackRecv=1;
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(port);
+    server_address.sin_addr.s_addr = INADDR_ANY;
+    int server_size = sizeof(server_address);
+    connect(sockfd, (struct sockaddr*)&server_address, server_size);
 
-    sockfd = socket(AF_INET,SOCK_DGRAM,0);
-    serverAddr.sin_addr.s_addr=inet_addr("127.0.0.1");
-    serverAddr.sin_family=AF_INET;
-    serverAddr.sin_port=htons(PORT);
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    while(true)
-    {
-        if(ackRecv==1)
-        {
-            frameSend.seqNo=frameID;
-            frameSend.frameID=1;
-            frameSend.ack=0;
+    printf("Enter number of frames: ");
+    scanf("%d", &frame_no);
 
-            printf("Enter data: ");
-            scanf("%s",&buffer);
-            strcpy(frameSend.packet.data,buffer);
-            sendto(sockfd,&frameSend,sizeof(Frame),0,(struct sockaddr*)&serverAddr,sizeof(serverAddr));
-            printf("Frame Send\n");
-        }
-        int addrSize= sizeof(serverAddr);
-        int fRecvSize = recvfrom(sockfd,&frameRecv,sizeof(frameRecv),0,(struct sockaddr*)&serverAddr,&addrSize);
-        if(fRecvSize>0 and frameRecv.seqNo==0 and frameRecv.ack==frameID+1)
-        {
-            printf("Ack received\n");
-            ackRecv=1;
-        }
-        else
-        {
-            printf("Ack not received\n");
-            ackRecv=0;
+    for (i = 0; i < frame_no; i++) {
+        sprintf(buffer, "%d", i);
+        print("Send Frame: %d", i);
+        send(sockfd, buffer, max, 0);
+
+        recvstatus = recv(sockfd, buffer, max, 0);
+
+        if (recvstatus < 0) {
+            print("Timeout error, resending frame %d", i);
+            i--;  // Decrement i to resend the same frame
+            continue;
+        } else {
+            ackno = atoi(buffer);
+            print("Received ack: %d", ackno);
+            if (ackno != i + 1) {
+                print("Invalid ackno, resending frame %d", i);
+                i--;  // Decrement i to resend the same frame
+                continue;
+            }
         }
     }
+    sprintf(buffer, "%d", -1);
+    send(sockfd, buffer, max, 0);
     close(sockfd);
-    return 0;
-
-
 }
